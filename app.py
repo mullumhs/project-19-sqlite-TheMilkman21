@@ -39,34 +39,50 @@ def add_movie(conn, title, director, year, rating):
 
 
 def display_all_movies(conn):
-    SELTECT *
-    
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM movies')
+    all_movies = cursor.fetchall()
+    print("All movies:")
+    for movie in all_movies:
+        print(movie)
+    conn.commit()
 
-    pass
 
 
 
 def update_movie_rating(conn, title, new_rating):
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE movies
+        SET rating = ?
+        WHERE title = ?
+    ''', (new_rating, title))
+    conn.commit()
 
-    # TODO: Update the rating of a specified movie
-
-    pass
+    
 
 
 
 def delete_movie(conn, title):
-
-    # TODO: Delete a specified movie from the database
-
-    pass
+    cursor = conn.cursor()
+    cursor.execute('''
+        DELETE FROM movies WHERE title = ?
+    ''', (title, ))
+    conn.commit()
+    
 
 
 
 def find_movies_by_director(conn, director):
+    cursor = conn.cursor()
+    movies = cursor.execute('''
+        SELECT * FROM movies WHERE director = ?
+    ''', (director, )).fetchall()
+    for movie in movies:
+        print(movie)
+    conn.commit()
 
-    # TODO: Find and display all movies by a specific director
-
-    pass
+    
 
 
 
