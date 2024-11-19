@@ -1,197 +1,72 @@
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 
 
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///movies.db'
+db = SQLAlchemy(app)
 
 
-def create_connection():
-    conn = sqlite3.connect('movies.db')
-    return conn
 
+class Movie(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    director = db.Column(db.String(100))
+    year = db.Column(db.Integer)
+    rating = db.Column(db.Float)
 
 
 
-def create_table(conn):
-    cursor = conn.cursor()
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS movies (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        director TEXT,
-        year INTEGER,
-        rating FLOAT
-    )
-    ''')
-    conn.commit()
+with app.app_context():
+    db.create_all()
 
 
 
+@app.route('/')
+def index():
+    movies = Movie.query.all()
+    return render_template('index.html', movies=movies)
 
-def add_movie(conn, title, director, year, rating):
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO movies (title, director, year, rating)
-        VALUES (?, ?, ?, ?)
-    ''', (title, director, year, rating))
-    conn.commit()
-    
 
 
+@app.route('/add', methods=['GET', 'POST'])
+def add_movie():
+    if request.method == 'POST':
+        new_movie = Movie(
+            title=request.form['title'],
+            director=request.form['director'],
+            year=int(request.form['year']),
+            rating=float(request.form['rating'])
+        )
+        db.session.add(new_movie)
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('add.html')
 
-def display_all_movies(conn):
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM movies')
-    all_movies = cursor.fetchall()
-    print("All movies:")
-    for movie in all_movies:
-        print(movie)
-    conn.commit()
 
 
+@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit_movie(id):
+    movie = Movie.query.get_or_404(id)
+    if request.method == 'POST':
+        movie.title = request.form['title']
+        movie.director = request.form['director']
+        movie.year = int(request.form['year'])
+        movie.rating = float(request.form['rating'])
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('edit.html', movie=movie)
 
 
-def update_movie_rating(conn, title, new_rating):
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE movies
-        SET rating = ?
-        WHERE title = ?
-    ''', (new_rating, title))
-    conn.commit()
-
-    
-
-
-
-def delete_movie(conn, title):
-    cursor = conn.cursor()
-    cursor.execute('''
-        DELETE FROM movies WHERE title = ?
-    ''', (title, ))
-    conn.commit()
-    
-
-
-
-def find_movies_by_director(conn, director):
-    cursor = conn.cursor()
-    movies = cursor.execute('''
-        SELECT * FROM movies WHERE director = ?
-    ''', (director, )).fetchall()
-    for movie in movies:
-        print(movie)
-    conn.commit()
-
-    
-
-
-
-def main():
-
-    conn = create_connection()
-
-    if conn is not None:
-
-        create_table(conn)
-
-        
-
-        while True:
-
-            print("\n--- Movie Database Manager ---")
-
-            print("1. Add a new movie")
-
-            print("2. Display all movies")
-
-            print("3. Update a movie's rating")
-
-            print("4. Delete a movie")
-
-            print("5. Find movies by director")
-
-            print("6. Exit")
-
-            
-
-            choice = input("Enter your choice (1-6): ")
-
-            
-
-            if choice == '1':
-
-                title = input("Enter movie title: ")
-
-                director = input("Enter director name: ")
-
-                year = int(input("Enter release year: "))
-
-                rating = float(input("Enter rating (0-10): "))
-
-                add_movie(conn, title, director, year, rating)
-
-                print("Movie added successfully!")
-
-            
-
-            elif choice == '2':
-
-                display_all_movies(conn)
-
-            
-
-            elif choice == '3':
-
-                title = input("Enter movie title to update: ")
-
-                new_rating = float(input("Enter new rating (0-10): "))
-
-                update_movie_rating(conn, title, new_rating)
-
-                print("Rating updated successfully!")
-
-            
-
-            elif choice == '4':
-
-                title = input("Enter movie title to delete: ")
-
-                delete_movie(conn, title)
-
-                print("Movie deleted successfully!")
-
-            
-
-            elif choice == '5':
-
-                director = input("Enter director name: ")
-
-                find_movies_by_director(conn, director)
-
-            
-
-            elif choice == '6':
-
-                print("Thank you for using Movie Database Manager. Goodbye!")
-
-                break
-
-            
-
-            else:
-
-                print("Invalid choice. Please try again.")
-
-        
-
-        conn.close()
-
-    else:
-
-        print("Error! Cannot create the database connection.")
+@app.route('/delete/<int:id>')
+def delete_movie(id):
+    movie = Movie.query.get_or_404(id)
+    db.session.delete(movie)
+    db.session.commit()
+    return redirect(url_for('index'))
 
 
 
 if __name__ == '__main__':
-
-    main()
+    app.run(debug=True)
